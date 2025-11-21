@@ -39,21 +39,21 @@ export default function Controls({
 
   return (
     <motion.div
-      className="bg-poker-green-dark/50 rounded-lg border-2 border-poker-gold/40 p-2.5 backdrop-blur-sm shadow-lg"
+      className="bg-poker-green-dark/50 rounded-lg border-2 border-poker-gold/40 p-4 backdrop-blur-sm shadow-lg"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
     >
-      <div className="flex flex-col items-center gap-2">
+      <div className="flex flex-col items-center gap-4">
         {/* Result Message */}
         {phase === 'DRAWN' && (
-          <div className="w-full flex items-center justify-center">
+          <div className="w-full flex items-center justify-center pb-2">
             <ResultMessage result={lastResult} />
           </div>
         )}
-        {/* Bet Controls - Show during BETTING and DRAWN phases */}
+        {/* Bet Controls with Deal Button - Show during BETTING and DRAWN phases */}
         {(phase === 'BETTING' || phase === 'DRAWN') && (
           <motion.div
-            className="flex items-center gap-3"
+            className="flex items-center gap-6"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
           >
@@ -111,74 +111,61 @@ export default function Controls({
             >
               <span className="absolute inset-0 flex items-center justify-center">+</span>
             </motion.button>
+
+            {/* Visual separator */}
+            <div className="h-12 w-px bg-poker-gold/30"></div>
+
+            {/* Deal/Deal Again button next to bet controls */}
+            <motion.button
+              onClick={onDeal}
+              disabled={!canDeal}
+              className={`
+                px-12 py-3 rounded-xl font-bold text-xl uppercase tracking-wider
+                transition-all duration-200 border-3 min-w-[180px]
+                ${canDeal
+                  ? 'bg-gradient-to-b from-poker-gold via-poker-gold to-poker-gold-dark border-poker-gold-dark text-poker-green-dark shadow-xl hover:shadow-2xl transform hover:scale-105'
+                  : 'bg-gray-700 border-gray-600 text-gray-500 cursor-not-allowed'
+                }
+              `}
+              style={{
+                textShadow: canDeal ? '0 2px 4px rgba(0, 0, 0, 0.3)' : 'none',
+              }}
+              initial={phase === 'DRAWN' ? { scale: 0 } : {}}
+              animate={{ scale: 1 }}
+              transition={phase === 'DRAWN' ? { type: 'spring', stiffness: 300, delay: 0.3 } : {}}
+              whileHover={canDeal ? { scale: 1.05 } : {}}
+              whileTap={canDeal ? { scale: 0.95 } : {}}
+            >
+              {isProcessing ? 'DEALING...' : phase === 'DRAWN' ? 'DEAL AGAIN' : 'DEAL'}
+            </motion.button>
           </motion.div>
         )}
 
-        {/* Main Action Buttons */}
-        <div className="flex gap-3">
-          {phase === 'BETTING' && (
-            <motion.button
-              onClick={onDeal}
-              disabled={!canDeal}
-              className={`
-                px-10 py-2.5 rounded-xl font-bold text-lg
-                transition-all duration-200 border-3
-                ${canDeal
-                  ? 'bg-gradient-to-b from-poker-gold via-poker-gold to-poker-gold-dark border-poker-gold-dark text-poker-green-dark shadow-xl hover:shadow-neon transform hover:scale-105'
-                  : 'bg-gray-700 border-gray-600 text-gray-500 cursor-not-allowed'
-                }
-              `}
-              whileHover={canDeal ? { scale: 1.05 } : {}}
-              whileTap={canDeal ? { scale: 0.95 } : {}}
-            >
-              {isProcessing ? 'DEALING...' : 'DEAL'}
-            </motion.button>
-          )}
-
-          {phase === 'DEALT' && (
-            <motion.button
-              onClick={onDraw}
-              disabled={!canDraw}
-              className={`
-                px-10 py-2.5 rounded-xl font-bold text-lg
-                transition-all duration-200 border-3
-                ${canDraw
-                  ? 'bg-gradient-to-b from-poker-gold via-poker-gold to-poker-gold-dark border-poker-gold-dark text-poker-green-dark shadow-xl hover:shadow-neon transform hover:scale-105 animate-pulse-glow'
-                  : 'bg-gray-700 border-gray-600 text-gray-500 cursor-not-allowed'
-                }
-              `}
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: 'spring', stiffness: 300 }}
-              whileHover={canDraw ? { scale: 1.05 } : {}}
-              whileTap={canDraw ? { scale: 0.95 } : {}}
-            >
-              {isProcessing ? 'DRAWING...' : 'DRAW'}
-            </motion.button>
-          )}
-
-          {phase === 'DRAWN' && (
-            <motion.button
-              onClick={onDeal}
-              disabled={!canDeal}
-              className={`
-                px-10 py-2.5 rounded-xl font-bold text-lg
-                transition-all duration-200 border-3
-                ${canDeal
-                  ? 'bg-gradient-to-b from-poker-gold via-poker-gold to-poker-gold-dark border-poker-gold-dark text-poker-green-dark shadow-xl hover:shadow-neon transform hover:scale-105'
-                  : 'bg-gray-700 border-gray-600 text-gray-500 cursor-not-allowed'
-                }
-              `}
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: 'spring', stiffness: 300, delay: 0.3 }}
-              whileHover={canDeal ? { scale: 1.05 } : {}}
-              whileTap={canDeal ? { scale: 0.95 } : {}}
-            >
-              {isProcessing ? 'DEALING...' : 'DEAL AGAIN'}
-            </motion.button>
-          )}
-        </div>
+        {/* Draw Button - Only show during DEALT phase */}
+        {phase === 'DEALT' && (
+          <motion.button
+            onClick={onDraw}
+            disabled={!canDraw}
+            className={`
+              px-16 py-3.5 rounded-xl font-bold text-2xl uppercase tracking-wider
+              transition-all duration-200 border-3 min-w-[200px]
+              ${canDraw
+                ? 'bg-gradient-to-b from-poker-gold via-poker-gold to-poker-gold-dark border-poker-gold-dark text-poker-green-dark shadow-xl hover:shadow-2xl transform hover:scale-105 animate-pulse-glow'
+                : 'bg-gray-700 border-gray-600 text-gray-500 cursor-not-allowed'
+              }
+            `}
+            style={{
+              textShadow: canDraw ? '0 2px 4px rgba(0, 0, 0, 0.3)' : 'none',
+            }}
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ type: 'spring', stiffness: 300 }}
+            whileHover={canDraw ? { scale: 1.05 } : {}}
+            whileTap={canDraw ? { scale: 0.95 } : {}}
+          >
+            {isProcessing ? 'DRAWING...' : 'DRAW'}
+          </motion.button>
+        )}
       </div>
     </motion.div>
   );
