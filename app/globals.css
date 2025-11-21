@@ -1,0 +1,69 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --poker-green: #0B5B3E;
+  --poker-green-light: #0F7A52;
+  --poker-green-dark: #073D29;
+  --poker-gold: #FFD700;
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+body {
+  background: var(--poker-green);
+  color: white;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--poker-green-dark);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--poker-gold);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #FFE55C;
+}
+
+/* Disable text selection on game elements */
+button,
+.select-none {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Animation utilities */
+@keyframes glow {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.9);
+  }
+}
+
+.animate-glow {
+  animation: glow 2s ease-in-out infinite;
+}
