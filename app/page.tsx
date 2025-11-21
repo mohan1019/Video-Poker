@@ -236,7 +236,7 @@ export default function Home() {
                 }}
                 className="px-4 py-1.5 bg-gradient-to-b from-poker-gold/20 to-poker-gold/10 hover:from-poker-gold/30 hover:to-poker-gold/20 text-poker-gold text-xs font-semibold rounded-lg border-2 border-poker-gold/40 hover:border-poker-gold/60 transition-all hover:scale-105 shadow-lg"
               >
-                {showStrategy ? '🎯 HIDE STRATEGY' : '🎯 SHOW STRATEGY'}
+                {showStrategy ? 'HIDE STRATEGY' : 'SHOW STRATEGY'}
               </button>
 
               {/* Disclaimer */}
