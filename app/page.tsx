@@ -10,11 +10,11 @@ import { motion } from 'framer-motion';
 import CardRow from '@/components/CardRow';
 import Controls from '@/components/Controls';
 import BalanceDisplay from '@/components/BalanceDisplay';
-import ResultMessage from '@/components/ResultMessage';
 import PayTable from '@/components/PayTable';
 import HandHistory, { type HandHistoryEntry } from '@/components/HandHistory';
 import StrategyPanel from '@/components/StrategyPanel';
 import type { GameState, DealResponse, DrawResponse } from '@/lib/types';
+import { playDealSound, playDrawSound, playWinSound, playLoseSound, playButtonClick } from '@/lib/sounds';
 
 const INITIAL_BALANCE = 1000;
 
@@ -34,6 +34,7 @@ export default function Home() {
   const [isDealing, setIsDealing] = useState(false);
   const [isDrawing, setIsDrawing] = useState(false);
   const [handHistory, setHandHistory] = useState<HandHistoryEntry[]>([]);
+  const [showStrategy, setShowStrategy] = useState(true);
 
   const handleBetChange = (newBet: number) => {
     if (newBet >= 1 && newBet <= 5 && newBet <= gameState.balance) {
@@ -47,6 +48,7 @@ export default function Home() {
       return;
     }
 
+    playDealSound();
     setIsProcessing(true);
     setIsDealing(true);
 
@@ -92,6 +94,7 @@ export default function Home() {
       return;
     }
 
+    playDrawSound();
     setIsProcessing(true);
     setIsDrawing(true);
 
@@ -136,12 +139,13 @@ export default function Home() {
         setIsDrawing(false);
       }, 800);
 
-      // Log provably fair data for verification
-      console.log('Provably Fair Verification:');
-      console.log('Seed:', data.seed);
-      console.log('Nonce:', data.nonce);
-      console.log('Original Commitment:', gameState.seedCommitment);
-      console.log('You can verify the shuffle was fair by hashing seed:nonce');
+      // Play win/lose sound based on result
+      if (data.evaluation.payout > 0) {
+        const isLargeWin = data.evaluation.payout >= gameState.bet * 10;
+        playWinSound(isLargeWin);
+      } else {
+        playLoseSound();
+      }
     } catch (error) {
       console.error('Draw error:', error);
       alert('Failed to draw cards. Please try again.');
@@ -162,6 +166,7 @@ export default function Home() {
 
   const handleReset = () => {
     if (confirm('Reset balance to ' + INITIAL_BALANCE + ' credits?')) {
+      playButtonClick();
       setGameState({
         balance: INITIAL_BALANCE,
         bet: 5,
@@ -191,22 +196,30 @@ export default function Home() {
 
       {/* Header */}
       <motion.div
-        className="text-center mb-1.5 relative z-10"
+        className="text-center mb-1 relative z-10"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <h1 className="text-xl font-bold text-poker-gold tracking-wider drop-shadow-lg">
-          VIDEO POKER <span className="text-xs text-poker-gold-light ml-2">Jacks or Better</span>
+        <h1 className="text-3xl font-extrabold text-poker-gold tracking-widest drop-shadow-2xl uppercase"
+          style={{
+            textShadow: '0 0 20px rgba(255, 215, 0, 0.6), 0 4px 8px rgba(0, 0, 0, 0.8), 0 0 40px rgba(255, 215, 0, 0.3)',
+            fontFamily: 'serif',
+          }}
+        >
+          VIDEO POKER
         </h1>
+        <div className="text-xs text-poker-gold-light tracking-wide font-semibold mt-0.5">
+          Jacks or Better
+        </div>
       </motion.div>
 
       {/* Pay Table with Balance, History and Reset inline */}
-      <div className="mb-1.5 relative z-10">
-        <div className="max-w-7xl mx-auto flex items-start justify-between gap-2">
+      <div className="mb-1 relative z-10">
+        <div className="max-w-7xl mx-auto px-2 flex items-start justify-between gap-2">
           <PayTable currentBet={gameState.bet} />
           <div className="flex gap-2">
             <HandHistory history={handHistory} />
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-1.5 min-w-[220px]">
               <BalanceDisplay balance={gameState.balance} initialBalance={INITIAL_BALANCE} />
               <button
                 onClick={handleReset}
@@ -214,53 +227,78 @@ export default function Home() {
               >
                 RESET
               </button>
+
+              {/* Strategy Toggle */}
+              <button
+                onClick={() => {
+                  playButtonClick();
+                  setShowStrategy(!showStrategy);
+                }}
+                className="px-4 py-1.5 bg-gradient-to-b from-poker-gold/20 to-poker-gold/10 hover:from-poker-gold/30 hover:to-poker-gold/20 text-poker-gold text-xs font-semibold rounded-lg border-2 border-poker-gold/40 hover:border-poker-gold/60 transition-all hover:scale-105 shadow-lg"
+              >
+                {showStrategy ? '🎯 HIDE STRATEGY' : '🎯 SHOW STRATEGY'}
+              </button>
+
+              {/* Disclaimer */}
+              <div className="bg-poker-green-dark/40 border border-poker-gold/30 rounded-lg p-1.5 backdrop-blur-sm shadow-md">
+                <div className="flex items-start gap-1.5">
+                  <span className="text-poker-gold text-xs flex-shrink-0">⚠️</span>
+                  <div className="text-[9px] text-gray-300 leading-snug">
+                    <strong className="text-poker-gold block text-[10px]">Game for Fun</strong>
+                    No gambling or real money. Virtual credits only.
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Main Game Container */}
-      <div className="flex-1 flex max-w-7xl mx-auto w-full min-h-0 relative z-10 gap-3">
-        {/* Left side - Game area */}
-        <div className="flex-1 flex flex-col justify-center min-h-0">
-          {/* Result Message */}
-          <div className="min-h-[60px] flex items-center justify-center mb-2">
-            <ResultMessage result={gameState.lastResult} />
-          </div>
+      {/* Main Game Container with Strategy Panel */}
+      <div className="flex-1 relative z-10 min-h-0">
+        <div className={`max-w-7xl mx-auto px-2 ${showStrategy ? 'flex items-start gap-3' : ''} h-full`}>
+          {/* Game area */}
+          <div className={`flex flex-col gap-2 ${showStrategy ? 'flex-1' : 'max-w-4xl mx-auto'}`}>
+            {/* Card Display Area */}
+            <motion.div
+              className="bg-poker-green-dark/30 rounded-xl border-2 border-poker-gold/50 pt-12 pb-3 px-4 shadow-xl backdrop-blur-sm"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+            >
+              <CardRow
+                cards={gameState.hand}
+                held={gameState.held}
+                winningIndices={gameState.lastResult?.winningCardIndices || []}
+                onToggleHold={handleToggleHold}
+                isDealing={isDealing}
+                isDrawing={isDrawing}
+              />
+            </motion.div>
 
-          {/* Card Display Area */}
-          <motion.div
-            className="bg-poker-green-dark/30 rounded-xl border-2 border-poker-gold/50 pt-8 pb-4 px-4 mb-2 shadow-xl backdrop-blur-sm"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-          >
-            <CardRow
-              cards={gameState.hand}
-              held={gameState.held}
-              winningIndices={gameState.lastResult?.winningCardIndices || []}
-              onToggleHold={handleToggleHold}
-              isDealing={isDealing}
-              isDrawing={isDrawing}
+            {/* Controls */}
+            <Controls
+              bet={gameState.bet}
+              balance={gameState.balance}
+              phase={gameState.phase}
+              onBetChange={handleBetChange}
+              onDeal={handleDeal}
+              onDraw={handleDraw}
+              isProcessing={isProcessing}
+              lastResult={gameState.lastResult}
             />
-          </motion.div>
-
-          {/* Controls */}
-          <Controls
-            bet={gameState.bet}
-            balance={gameState.balance}
-            phase={gameState.phase}
-            onBetChange={handleBetChange}
-            onDeal={handleDeal}
-            onDraw={handleDraw}
-            isProcessing={isProcessing}
-          />
-        </div>
-
-        {/* Right side - Strategy Panel */}
-        <div className="w-[320px] flex flex-col justify-end">
-          <div className="h-[400px]">
-            <StrategyPanel hand={gameState.hand} phase={gameState.phase} />
           </div>
+
+          {/* Right side - Strategy Panel */}
+          {showStrategy && (
+            <motion.div
+              className="w-[300px] flex-shrink-0"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+            >
+              <StrategyPanel hand={gameState.hand} phase={gameState.phase} />
+            </motion.div>
+          )}
         </div>
       </div>
     </main>

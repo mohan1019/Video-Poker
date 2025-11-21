@@ -33,13 +33,27 @@ export default function StrategyPanel({ hand, phase }: StrategyPanelProps) {
     // Only analyze when we have a dealt hand (before draw)
     if (phase !== 'DEALT' || hand.length !== 5) {
       setStrategies([]);
+      setLoading(false);
       return;
     }
 
-    analyzeHand();
+    const abortController = new AbortController();
+
+    // Run strategy calculation in a microtask to not block rendering
+    Promise.resolve().then(() => {
+      if (!abortController.signal.aborted) {
+        analyzeHand(abortController.signal);
+      }
+    });
+
+    return () => {
+      abortController.abort();
+      setLoading(false);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hand, phase]);
 
-  const analyzeHand = async () => {
+  const analyzeHand = async (signal?: AbortSignal) => {
     setLoading(true);
     setError(null);
 
@@ -60,6 +74,7 @@ export default function StrategyPanel({ hand, phase }: StrategyPanelProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ hand: handStrings }),
+        signal,
       });
 
       if (!response.ok) {
@@ -68,7 +83,11 @@ export default function StrategyPanel({ hand, phase }: StrategyPanelProps) {
 
       const data = await response.json();
       setStrategies(data.strategies);
-    } catch (err) {
+    } catch (err: any) {
+      // Ignore abort errors
+      if (err.name === 'AbortError') {
+        return;
+      }
       console.error('Strategy analysis error:', err);
       setError('Failed to analyze hand');
     } finally {
@@ -79,7 +98,7 @@ export default function StrategyPanel({ hand, phase }: StrategyPanelProps) {
   if (phase === 'BETTING' || hand.length === 0) {
     return (
       <motion.div
-        className="bg-poker-green-dark/70 border-2 border-poker-gold/50 rounded-lg p-3 backdrop-blur-sm shadow-lg"
+        className="bg-poker-green-dark/70 border-2 border-poker-gold/50 rounded-lg p-3 backdrop-blur-sm shadow-lg h-full max-h-[420px]"
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
       >
@@ -96,7 +115,7 @@ export default function StrategyPanel({ hand, phase }: StrategyPanelProps) {
   if (phase === 'DRAWN') {
     return (
       <motion.div
-        className="bg-poker-green-dark/70 border-2 border-poker-gold/50 rounded-lg p-3 backdrop-blur-sm shadow-lg"
+        className="bg-poker-green-dark/70 border-2 border-poker-gold/50 rounded-lg p-3 backdrop-blur-sm shadow-lg h-full max-h-[420px]"
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
       >
@@ -112,11 +131,11 @@ export default function StrategyPanel({ hand, phase }: StrategyPanelProps) {
 
   return (
     <motion.div
-      className="bg-poker-green-dark/70 border-2 border-poker-gold/50 rounded-lg p-3 backdrop-blur-sm shadow-lg h-full flex flex-col"
+      className="bg-poker-green-dark/70 border-2 border-poker-gold/50 rounded-lg p-3 backdrop-blur-sm shadow-lg flex flex-col h-full max-h-[420px]"
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
     >
-      <div className="text-poker-gold font-bold text-sm mb-2 text-center uppercase tracking-wider">
+      <div className="text-poker-gold font-bold text-sm mb-2 text-center uppercase tracking-wider flex-shrink-0">
         Strategy Advisor
       </div>
 
@@ -133,7 +152,7 @@ export default function StrategyPanel({ hand, phase }: StrategyPanelProps) {
       )}
 
       {!loading && !error && strategies.length > 0 && (
-        <div className="space-y-2 overflow-y-auto flex-1">
+        <div className="space-y-2 overflow-y-auto flex-1 min-h-0">
           <AnimatePresence>
             {strategies.map((strategy, index) => (
               <motion.div

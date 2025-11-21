@@ -50,6 +50,7 @@ export function calculatePayout(rank: HandRank, bet: number): HandEvaluation {
     rank,
     multiplier,
     payout,
+    winningCardIndices: [], // Will be populated by caller
   };
 }
 

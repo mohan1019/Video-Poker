@@ -88,7 +88,17 @@ function* combinations<T>(array: T[], k: number): Generator<T[]> {
   }
 }
 
-// Calculate EV for a specific hold pattern
+// Helper: Randomly sample N cards from deck without replacement
+function sampleCards(deck: Card[], count: number): Card[] {
+  const shuffled = [...deck];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled.slice(0, count);
+}
+
+// Calculate EV for a specific hold pattern using sampling for speed
 function calculateEV(hand: Card[], holdIndices: number[]): {
   ev: number;
   outcomeCounts: Map<HandRank, number>;
@@ -113,27 +123,59 @@ function calculateEV(hand: Card[], holdIndices: number[]): {
     outcomeCounts.set(rank as HandRank, 0);
   });
 
-  // Enumerate all possible draws
-  for (const drawnCards of combinations(remainingDeck, numToDraw)) {
-    // Build final hand
-    const finalHand: Card[] = [];
-    let drawnIndex = 0;
+  // Use sampling for 3+ cards (millions of combinations), exact for 0-2 cards
+  const useSampling = numToDraw >= 3;
+  const SAMPLE_SIZE = 10000;
 
-    for (let i = 0; i < 5; i++) {
-      if (holdIndices.includes(i)) {
-        finalHand.push(hand[i]);
-      } else {
-        finalHand.push(drawnCards[drawnIndex++]);
+  if (useSampling) {
+    // Monte Carlo sampling for speed
+    for (let sample = 0; sample < SAMPLE_SIZE; sample++) {
+      // Randomly draw cards
+      const drawnCards = sampleCards(remainingDeck, numToDraw);
+
+      // Build final hand
+      const finalHand: Card[] = [];
+      let drawnIndex = 0;
+
+      for (let i = 0; i < 5; i++) {
+        if (holdIndices.includes(i)) {
+          finalHand.push(hand[i]);
+        } else {
+          finalHand.push(drawnCards[drawnIndex++]);
+        }
       }
+
+      // Evaluate hand
+      const handRank = evaluateHand(finalHand);
+      const payout = PAY_TABLE[handRank];
+
+      totalPayout += payout;
+      totalCombinations++;
+      outcomeCounts.set(handRank, (outcomeCounts.get(handRank) || 0) + 1);
     }
+  } else {
+    // Exact enumeration for small cases (fast enough)
+    for (const drawnCards of combinations(remainingDeck, numToDraw)) {
+      // Build final hand
+      const finalHand: Card[] = [];
+      let drawnIndex = 0;
 
-    // Evaluate hand
-    const handRank = evaluateHand(finalHand);
-    const payout = PAY_TABLE[handRank];
+      for (let i = 0; i < 5; i++) {
+        if (holdIndices.includes(i)) {
+          finalHand.push(hand[i]);
+        } else {
+          finalHand.push(drawnCards[drawnIndex++]);
+        }
+      }
 
-    totalPayout += payout;
-    totalCombinations++;
-    outcomeCounts.set(handRank, (outcomeCounts.get(handRank) || 0) + 1);
+      // Evaluate hand
+      const handRank = evaluateHand(finalHand);
+      const payout = PAY_TABLE[handRank];
+
+      totalPayout += payout;
+      totalCombinations++;
+      outcomeCounts.set(handRank, (outcomeCounts.get(handRank) || 0) + 1);
+    }
   }
 
   const ev = totalCombinations > 0 ? totalPayout / totalCombinations : 0;

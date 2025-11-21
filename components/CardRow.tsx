@@ -8,6 +8,7 @@
 import { AnimatePresence } from 'framer-motion';
 import Card from './Card';
 import type { Card as CardType } from '@/lib/types';
+import { playHoldSound } from '@/lib/sounds';
 
 interface CardRowProps {
   cards: CardType[];
@@ -44,7 +45,10 @@ export default function CardRow({
               card={card}
               isHeld={held[index]}
               isWinning={winningIndices.includes(index)}
-              onToggleHold={() => onToggleHold(index)}
+              onToggleHold={() => {
+                playHoldSound();
+                onToggleHold(index);
+              }}
               index={index}
               isDealing={isDealing}
               isDrawing={isDrawing}

@@ -6,25 +6,27 @@
  * - Client only sees the 5 cards they are dealt
  * - On draw, server uses the stored deck to deal replacement cards
  * - This prevents client from knowing or manipulating future cards
- * - Sessions are stored in-memory (can be swapped to Redis later)
- * - Sessions expire after 1 hour to prevent memory leaks
+ * - Sessions are stored in Vercel KV (production) or in-memory (development)
+ * - Sessions expire after 1 hour automatically
  * - Completed hands cannot be replayed (prevents replay attacks)
  */
 
 import type { ServerHandSession } from '../types';
 
 /**
- * In-memory store for active hand sessions
- * Key: handId
- * Value: ServerHandSession
- *
- * PRODUCTION NOTE: Replace with Redis for multi-server deployments
- * Redis.set(handId, JSON.stringify(session), 'EX', 3600)
- *
- * DEVELOPMENT NOTE: Uses globalThis to persist across Next.js hot reloads
+ * Session expiration time
  */
+const SESSION_EXPIRY_SECONDS = 3600;
+const SESSION_EXPIRY_MS = SESSION_EXPIRY_SECONDS * 1000;
 
-// Persist sessions across hot reloads in development
+/**
+ * Check if Vercel KV is available
+ */
+const isKVAvailable = process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN;
+
+/**
+ * In-memory store for local development
+ */
 const globalForSessions = globalThis as unknown as {
   sessions: Map<string, ServerHandSession> | undefined;
 };
@@ -36,23 +38,38 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 /**
- * Session expiration time (1 hour in milliseconds)
+ * Lazy-load KV only if environment variables are available
  */
-const SESSION_EXPIRY_MS = 60 * 60 * 1000;
+let kv: any = null;
+async function getKV() {
+  if (!kv && isKVAvailable) {
+    const { kv: vercelKV } = await import('@vercel/kv');
+    kv = vercelKV;
+  }
+  return kv;
+}
 
 /**
  * Stores a new hand session
  *
  * @param session - The hand session to store
  */
-export function storeSession(session: ServerHandSession): void {
-  sessions.set(session.handId, session);
-  console.log(`[SessionStore] Stored session ${session.handId}, total sessions: ${sessions.size}`);
+export async function storeSession(session: ServerHandSession): Promise<void> {
+  if (isKVAvailable) {
+    // Use Vercel KV in production
+    const kvStore = await getKV();
+    await kvStore.set(`session:${session.handId}`, JSON.stringify(session), {
+      ex: SESSION_EXPIRY_SECONDS,
+    });
+  } else {
+    // Use in-memory storage for local development
+    sessions.set(session.handId, session);
 
-  // Schedule cleanup after expiry
-  setTimeout(() => {
-    deleteSession(session.handId);
-  }, SESSION_EXPIRY_MS);
+    // Schedule cleanup after expiry
+    setTimeout(() => {
+      sessions.delete(session.handId);
+    }, SESSION_EXPIRY_MS);
+  }
 }
 
 /**
@@ -63,25 +80,38 @@ export function storeSession(session: ServerHandSession): void {
  * @param handId - The hand ID to retrieve
  * @returns The session or null if not found/expired
  */
-export function getSession(handId: string): ServerHandSession | null {
-  console.log(`[SessionStore] Getting session ${handId}, total sessions: ${sessions.size}`);
-  const session = sessions.get(handId);
+export async function getSession(handId: string): Promise<ServerHandSession | null> {
+  if (isKVAvailable) {
+    // Use Vercel KV in production
+    const kvStore = await getKV();
+    const data = await kvStore.get(`session:${handId}`) as string | null;
 
-  if (!session) {
-    console.log(`[SessionStore] Session ${handId} not found`);
-    return null;
+    if (!data) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(data) as ServerHandSession;
+    } catch {
+      return null;
+    }
+  } else {
+    // Use in-memory storage for local development
+    const session = sessions.get(handId);
+
+    if (!session) {
+      return null;
+    }
+
+    // Check if session has expired
+    const age = Date.now() - session.timestamp;
+    if (age > SESSION_EXPIRY_MS) {
+      sessions.delete(handId);
+      return null;
+    }
+
+    return session;
   }
-
-  // Check if session has expired
-  const age = Date.now() - session.timestamp;
-  if (age > SESSION_EXPIRY_MS) {
-    console.log(`[SessionStore] Session ${handId} expired (age: ${age}ms)`);
-    deleteSession(handId);
-    return null;
-  }
-
-  console.log(`[SessionStore] Session ${handId} retrieved successfully`);
-  return session;
 }
 
 /**
@@ -90,13 +120,13 @@ export function getSession(handId: string): ServerHandSession | null {
  * @param handId - The hand ID to update
  * @param updates - Partial session updates
  */
-export function updateSession(
+export async function updateSession(
   handId: string,
   updates: Partial<ServerHandSession>
-): void {
-  const session = sessions.get(handId);
+): Promise<void> {
+  const session = await getSession(handId);
   if (session) {
-    sessions.set(handId, { ...session, ...updates });
+    await storeSession({ ...session, ...updates });
   }
 }
 
@@ -105,8 +135,13 @@ export function updateSession(
  *
  * @param handId - The hand ID to delete
  */
-export function deleteSession(handId: string): void {
-  sessions.delete(handId);
+export async function deleteSession(handId: string): Promise<void> {
+  if (isKVAvailable) {
+    const kvStore = await getKV();
+    await kvStore.del(`session:${handId}`);
+  } else {
+    sessions.delete(handId);
+  }
 }
 
 /**
@@ -115,13 +150,13 @@ export function deleteSession(handId: string): void {
  * SECURITY CHECKS:
  * - Session must exist
  * - Session must not be completed (prevents replay)
- * - Session must not be expired
+ * - Session must not be expired (handled by KV TTL)
  *
  * @param handId - The hand ID to validate
  * @returns Error message if invalid, null if valid
  */
-export function validateSession(handId: string): string | null {
-  const session = getSession(handId);
+export async function validateSession(handId: string): Promise<string | null> {
+  const session = await getSession(handId);
 
   if (!session) {
     return 'Invalid or expired hand session';
@@ -135,15 +170,20 @@ export function validateSession(handId: string): string | null {
 }
 
 /**
- * Cleans up expired sessions (can be called periodically)
- * In production, this would be handled by Redis TTL
+ * Cleans up expired sessions
+ * With KV, sessions expire automatically via TTL - no manual cleanup needed
  */
-export function cleanupExpiredSessions(): void {
-  const now = Date.now();
-  for (const [handId, session] of sessions.entries()) {
-    const age = now - session.timestamp;
-    if (age > SESSION_EXPIRY_MS) {
-      sessions.delete(handId);
+export async function cleanupExpiredSessions(): Promise<void> {
+  if (isKVAvailable) {
+    // KV automatically expires sessions, no manual cleanup needed
+  } else {
+    // Clean up expired in-memory sessions
+    const now = Date.now();
+    for (const [handId, session] of sessions.entries()) {
+      const age = now - session.timestamp;
+      if (age > SESSION_EXPIRY_MS) {
+        sessions.delete(handId);
+      }
     }
   }
 }
@@ -151,6 +191,12 @@ export function cleanupExpiredSessions(): void {
 /**
  * Gets the current number of active sessions (for monitoring)
  */
-export function getActiveSessionCount(): number {
-  return sessions.size;
+export async function getActiveSessionCount(): Promise<number> {
+  if (isKVAvailable) {
+    const kvStore = await getKV();
+    const keys = await kvStore.keys('session:*');
+    return keys.length;
+  } else {
+    return sessions.size;
+  }
 }

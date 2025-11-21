@@ -36,11 +36,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { handId, held, balance } = body;
 
-    console.log('Draw request received:', { handId, held, balance });
-
     // STEP 1: Validate request
     if (!handId || typeof handId !== 'string') {
-      console.error('Invalid handId:', handId);
       return NextResponse.json(
         { error: 'Invalid hand ID' },
         { status: 400 }
@@ -48,7 +45,6 @@ export async function POST(request: NextRequest) {
     }
 
     if (!Array.isArray(held) || held.length !== 5) {
-      console.error('Invalid held array:', held);
       return NextResponse.json(
         { error: 'Hold array must contain exactly 5 boolean values' },
         { status: 400 }
@@ -56,7 +52,6 @@ export async function POST(request: NextRequest) {
     }
 
     if (!held.every(h => typeof h === 'boolean')) {
-      console.error('Held array contains non-boolean values:', held);
       return NextResponse.json(
         { error: 'All hold values must be boolean' },
         { status: 400 }
@@ -64,9 +59,8 @@ export async function POST(request: NextRequest) {
     }
 
     // STEP 2: Validate session (anti-tamper checks)
-    const validationError = validateSession(handId);
+    const validationError = await validateSession(handId);
     if (validationError) {
-      console.error('Session validation failed:', validationError, 'handId:', handId);
       return NextResponse.json(
         { error: validationError },
         { status: 400 }
@@ -74,16 +68,13 @@ export async function POST(request: NextRequest) {
     }
 
     // STEP 3: Retrieve session (contains the secret deck)
-    const session = getSession(handId);
+    const session = await getSession(handId);
     if (!session) {
-      console.error('Session not found for handId:', handId);
       return NextResponse.json(
         { error: 'Session not found' },
         { status: 404 }
       );
     }
-
-    console.log('Session retrieved successfully, nextCardIndex:', session.nextCardIndex);
 
     // STEP 4: Build final hand by replacing non-held cards
     // This uses the pre-shuffled deck stored server-side
@@ -106,20 +97,18 @@ export async function POST(request: NextRequest) {
     }
 
     // STEP 5: Evaluate the final hand
-    console.log('Evaluating hand:', finalHand.map(c => `${c.rank}${c.suit[0]}`).join(' '));
     const handRank = evaluateHand(finalHand);
     const winningCardIndices = getWinningCardIndices(finalHand, handRank);
     const evaluation = {
       ...calculatePayout(handRank, session.bet),
       winningCardIndices,
     };
-    console.log('Hand evaluation:', handRank, 'payout:', evaluation.payout, 'winning cards:', winningCardIndices);
 
     // STEP 6: Calculate new balance
     const newBalance = balance + evaluation.payout;
 
     // STEP 7: Mark session as completed (prevents replay)
-    updateSession(handId, { completed: true });
+    await updateSession(handId, { completed: true });
 
     // STEP 8: Reveal seed for provably fair verification
     // Client can now verify that:
@@ -133,11 +122,8 @@ export async function POST(request: NextRequest) {
       nonce: session.nonce,
     };
 
-    console.log('Draw completed successfully');
     return NextResponse.json(response);
   } catch (error) {
-    console.error('Draw error:', error);
-    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Internal server error' },
       { status: 500 }

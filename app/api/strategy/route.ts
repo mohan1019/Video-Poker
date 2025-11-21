@@ -41,7 +41,6 @@ export async function POST(request: NextRequest) {
       strategies,
     });
   } catch (error) {
-    console.error('Strategy analysis error:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Internal server error' },
       { status: 500 }

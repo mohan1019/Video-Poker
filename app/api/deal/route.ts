@@ -88,8 +88,7 @@ export async function POST(request: NextRequest) {
       completed: false,
     };
 
-    storeSession(session);
-    console.log('Session stored with handId:', handId);
+    await storeSession(session);
 
     // STEP 7: Calculate new balance after bet
     const newBalance = balance - bet;
@@ -103,7 +102,6 @@ export async function POST(request: NextRequest) {
       seedCommitment, // Hash only - proves fairness later
     };
 
-    console.log('Deal completed successfully, dealt cards:', dealtCards.map(c => `${c.rank}${c.suit[0]}`).join(' '));
     return NextResponse.json(response);
   } catch (error) {
     console.error('Deal error:', error);
