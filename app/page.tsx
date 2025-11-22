@@ -196,7 +196,7 @@ export default function Home() {
 
       {/* Header */}
       <motion.div
-        className="text-center mb-0.5 relative z-10"
+        className="text-center mb-0.5 relative z-10 flex-shrink-0"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
       >
@@ -214,16 +214,16 @@ export default function Home() {
       </motion.div>
 
       {/* Pay Table with Balance, History and Reset inline */}
-      <div className="mb-0.5 relative z-10">
+      <div className="mb-0.5 relative z-10 flex-shrink-0">
         <div className="max-w-7xl mx-auto px-2 flex items-start justify-between gap-2">
           <PayTable currentBet={gameState.bet} />
           <div className="flex gap-2">
             <HandHistory history={handHistory} />
-            <div className="flex flex-col gap-1.5 min-w-[220px]">
+            <div className="flex flex-col gap-1 min-w-[220px] h-fit">
               <BalanceDisplay balance={gameState.balance} initialBalance={INITIAL_BALANCE} />
               <button
                 onClick={handleReset}
-                className="px-4 py-1.5 bg-gradient-to-b from-poker-gold/20 to-poker-gold/10 hover:from-poker-gold/30 hover:to-poker-gold/20 text-poker-gold text-xs font-semibold rounded-lg border-2 border-poker-gold/40 hover:border-poker-gold/60 transition-all hover:scale-105 shadow-lg"
+                className="px-4 py-1 bg-gradient-to-b from-poker-gold/20 to-poker-gold/10 hover:from-poker-gold/30 hover:to-poker-gold/20 text-poker-gold text-xs font-semibold rounded-lg border-2 border-poker-gold/40 hover:border-poker-gold/60 transition-all hover:scale-105 shadow-lg"
               >
                 RESET
               </button>
@@ -234,17 +234,21 @@ export default function Home() {
                   playButtonClick();
                   setShowStrategy(!showStrategy);
                 }}
-                className="px-4 py-1.5 bg-gradient-to-b from-poker-gold/20 to-poker-gold/10 hover:from-poker-gold/30 hover:to-poker-gold/20 text-poker-gold text-xs font-semibold rounded-lg border-2 border-poker-gold/40 hover:border-poker-gold/60 transition-all hover:scale-105 shadow-lg"
+                className="px-4 py-1 bg-gradient-to-b from-poker-gold/20 to-poker-gold/10 hover:from-poker-gold/30 hover:to-poker-gold/20 text-poker-gold text-xs font-semibold rounded-lg border-2 border-poker-gold/40 hover:border-poker-gold/60 transition-all hover:scale-105 shadow-lg"
               >
                 {showStrategy ? 'HIDE STRATEGY' : 'SHOW STRATEGY'}
               </button>
 
               {/* Disclaimer */}
-              <div className="bg-poker-green-dark/40 border border-poker-gold/30 rounded-lg p-1 backdrop-blur-sm shadow-md">
-                <div className="flex items-center gap-1">
-                  <span className="text-poker-gold text-[10px] flex-shrink-0">⚠️</span>
-                  <div className="text-[8px] text-gray-300 leading-tight">
-                    <strong className="text-poker-gold">For Fun</strong> - Virtual credits only
+              <div className="bg-poker-green-dark/50 border-2 border-poker-gold/40 rounded-lg px-2 pt-2 pb-1.5 backdrop-blur-sm shadow-lg">
+                <div className="flex items-start gap-1.5">
+                  <span className="text-poker-gold text-xs flex-shrink-0">⚠️</span>
+                  <div className="text-[10px] text-gray-300 leading-snug">
+                    <strong className="text-poker-gold">Strategy Testing Software</strong>
+                    <div className="mt-0.5">
+                      For fun and educational purposes only.<br></br> No real money involved - virtual credits only.
+                    </div>
+
                   </div>
                 </div>
               </div>
@@ -254,13 +258,13 @@ export default function Home() {
       </div>
 
       {/* Main Game Container with Strategy Panel */}
-      <div className="flex-1 relative z-10 min-h-0">
+      <div className="flex-1 relative z-10 min-h-0 overflow-auto">
         <div className={`max-w-7xl mx-auto px-2 ${showStrategy ? 'flex items-start gap-3' : ''} h-full`}>
           {/* Game area */}
-          <div className={`flex flex-col gap-1.5 ${showStrategy ? 'flex-1' : 'max-w-4xl mx-auto'}`}>
+          <div className={`flex flex-col gap-1 ${showStrategy ? 'flex-1' : 'max-w-4xl mx-auto'}`}>
             {/* Card Display Area */}
             <motion.div
-              className="bg-poker-green-dark/30 rounded-xl border-2 border-poker-gold/50 pt-8 pb-2 px-4 shadow-xl backdrop-blur-sm"
+              className="bg-poker-green-dark/30 rounded-xl border-2 border-poker-gold/50 pt-16 pb-2 px-4 shadow-xl backdrop-blur-sm"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
             >

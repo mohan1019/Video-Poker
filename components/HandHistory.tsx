@@ -21,21 +21,21 @@ interface HandHistoryProps {
 }
 
 export default function HandHistory({ history }: HandHistoryProps) {
-  // Show last 8 hands (most recent first)
-  const recentHistory = [...history].reverse().slice(0, 8);
+  // Show last 5 hands (most recent first) to match pay table height
+  const recentHistory = [...history].reverse().slice(0, 5);
 
   return (
     <motion.div
-      className="bg-poker-green-dark/70 border-2 border-poker-gold/50 rounded-lg p-2.5 backdrop-blur-sm shadow-lg w-[240px]"
+      className="bg-poker-green-dark/70 border-2 border-poker-gold/50 rounded-lg p-2.5 backdrop-blur-sm shadow-lg w-[240px] h-fit"
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.15 }}
     >
-      <div className="text-poker-gold font-bold text-xs mb-2 text-center uppercase tracking-wider">
+      <div className="text-poker-gold font-bold text-xs mb-1.5 text-center uppercase tracking-wider">
         Hand History
       </div>
 
-      <div className="space-y-1.5 max-h-[153px] overflow-y-auto scrollbar-thin scrollbar-thumb-poker-gold/40 scrollbar-track-poker-green-dark/20">
+      <div className="space-y-1 max-h-[155px] overflow-y-auto scrollbar-thin scrollbar-thumb-poker-gold/40 scrollbar-track-poker-green-dark/20">
         <AnimatePresence initial={false}>
           {recentHistory.length === 0 ? (
             <div className="text-gray-400 text-sm text-center py-4">
@@ -82,7 +82,7 @@ export default function HandHistory({ history }: HandHistoryProps) {
       </div>
 
       {recentHistory.length > 0 && (
-        <div className="mt-2 pt-2 border-t border-poker-gold/30">
+        <div className="mt-1.5 pt-1.5 border-t border-poker-gold/30">
           <div className="flex justify-between items-center">
             <span className="text-gray-400 text-xs font-medium">Total Hands:</span>
             <span className="text-poker-gold font-bold text-sm">{history.length}</span>

@@ -77,11 +77,6 @@ export default function BalanceDisplay({ balance, initialBalance = 1000 }: Balan
           </AnimatePresence>
         </div>
       </div>
-
-      {/* Disclaimer */}
-      <div className="text-[10px] text-gray-400/70 text-center px-2 leading-tight">
-        For fun & strategy learning only. No real money.
-      </div>
     </div>
   );
 }
